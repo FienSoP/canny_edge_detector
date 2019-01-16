@@ -19,19 +19,20 @@ def load_data(dir_name = 'faces_imgs'):
     '''
     imgs = []
     for filename in os.listdir(dir_name):
-        img = mpimg.imread(dir_name + '/' + filename)
-        img = rgb2gray(img)
-        imgs.append(img)
+        if os.path.isfile(dir_name + '/' + filename):
+            img = mpimg.imread(dir_name + '/' + filename)
+            img = rgb2gray(img)
+            imgs.append(img)
     return imgs
 
 
-def visualize(imgs, format=None):
+def visualize(imgs, format=None, gray=False):
     plt.figure(figsize=(20, 40))
     for i, img in enumerate(imgs):
         if img.shape[0] == 3:
             img = img.transpose(1,2,0)
         plt_idx = i+1
-        plt.subplot(4, 2, plt_idx)    
+        plt.subplot(2, 2, plt_idx)
         plt.imshow(img, format)
     plt.show()
 

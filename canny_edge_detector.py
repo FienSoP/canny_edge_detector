@@ -5,7 +5,7 @@ from scipy import misc
 import numpy as np
 
 class cannyEdgeDetector:
-    def __init__(self, imgs, sigma=1, kernel_size=5, weak_pixel=25, strong_pixel=255):
+    def __init__(self, imgs, sigma=1, kernel_size=5, weak_pixel=75, strong_pixel=255, lowthreshold=0.05, highthreshold=0.15):
         self.imgs = imgs
         self.imgs_final = []
         self.img_smoothed = None
@@ -16,7 +16,9 @@ class cannyEdgeDetector:
         self.weak_pixel = weak_pixel
         self.strong_pixel = strong_pixel
         self.sigma = sigma
-        self.kernel_size = kernel_size        
+        self.kernel_size = kernel_size
+        self.lowThreshold = lowthreshold
+        self.highThreshold = highthreshold
         return 
     
     def gaussian_kernel(self, size, sigma=1):
@@ -43,19 +45,14 @@ class cannyEdgeDetector:
         M, N = img.shape
         Z = np.zeros((M,N), dtype=np.int32)
         angle = D * 180. / np.pi
-        #pi_4 = np.pi / 4
-        #pi_2 = np.pi / 2
         angle[angle < 0] += 180
 
 
         for i in range(1,M-1):
             for j in range(1,N-1):
                 try:
-                    #theta = D[i,j] #* 180 / np.pi #angle in degrees
-                    #theta_mod = theta % np.pi
                     q = 255
                     r = 255
-                    #alpha = None
 
                    #angle 0
                     if (0 <= angle[i,j] < 22.5) or (157.5 <= angle[i,j] <= 180):
@@ -85,16 +82,16 @@ class cannyEdgeDetector:
 
         return Z
 
-    def threshold(self, img, lowThresholdRatio=0.05, highThresholdRatio=0.09):
+    def threshold(self, img):
 
-        highThreshold = img.max() * highThresholdRatio;
-        lowThreshold = highThreshold * lowThresholdRatio;
+        highThreshold = img.max() * self.highThreshold;
+        lowThreshold = highThreshold * self.lowThreshold;
 
         M, N = img.shape
         res = np.zeros((M,N), dtype=np.int32)
 
-        weak = np.int32(25)
-        strong = np.int32(255)
+        weak = np.int32(self.weak_pixel)
+        strong = np.int32(self.strong_pixel)
 
         strong_i, strong_j = np.where(img >= highThreshold)
         zeros_i, zeros_j = np.where(img < lowThreshold)
@@ -104,11 +101,13 @@ class cannyEdgeDetector:
         res[strong_i, strong_j] = strong
         res[weak_i, weak_j] = weak
 
-        return (res, weak, strong)
+        return (res)
 
-    def hysteresis(self, img, weak, strong=255):
+    def hysteresis(self, img):
 
-        M, N = img.shape  
+        M, N = img.shape
+        weak = self.weak_pixel
+        strong = self.strong_pixel
 
         for i in range(1, M-1):
             for j in range(1, N-1):
@@ -131,8 +130,8 @@ class cannyEdgeDetector:
             self.img_smoothed = convolve(img, self.gaussian_kernel(self.kernel_size, self.sigma))
             self.gradientMat, self.thetaMat = self.sobel_filters(self.img_smoothed)
             self.nonMaxImg = self.non_max_suppression(self.gradientMat, self.thetaMat)
-            self.thresholdImg, self.weak_pixel, self.strong_pixel = self.threshold(self.nonMaxImg, lowThresholdRatio=0.07, highThresholdRatio=0.19)
-            img_final = self.hysteresis(self.thresholdImg, self.weak_pixel, strong=self.strong_pixel)
+            self.thresholdImg = self.threshold(self.nonMaxImg)
+            img_final = self.hysteresis(self.thresholdImg)
             self.imgs_final.append(img_final)
 
         return self.imgs_final
